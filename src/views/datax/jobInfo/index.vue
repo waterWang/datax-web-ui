@@ -7,10 +7,10 @@
         <el-option v-for="item in glueTypes" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
       <el-button v-waves class="filter-item" type="primary" icon="el-icon-search" @click="fetchData">
-        Search
+        搜索
       </el-button>
       <el-button class="filter-item" style="margin-left: 10px;" type="primary" icon="el-icon-edit" @click="handleCreate">
-        Add
+        添加
       </el-button>
       <!-- <el-checkbox v-model="showReviewer" class="filter-item" style="margin-left:15px;" @change="tableKey=tableKey+1">
         reviewer
@@ -27,24 +27,24 @@
       <el-table-column align="center" label="任务ID" width="80">
         <template slot-scope="scope">{{ scope.row.id }}</template>
       </el-table-column>
-      <el-table-column label="任务描述" align="center">
+      <el-table-column label="任务描述" align="center" width="300">
         <template slot-scope="scope">{{ scope.row.jobDesc }}</template>
       </el-table-column>
-      <el-table-column label="任务类型" align="center">
+      <el-table-column label="任务类型" align="center" width="120">
         <template slot-scope="scope">{{ glueTypes.find(t=>t.value===scope.row.glueType).label }}</template>
       </el-table-column>
-      <el-table-column label="Cron" align="center">
+      <el-table-column label="Cron" align="center" width="100">
         <template slot-scope="scope">
           <span>{{ scope.row.jobCron }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="路由策略" align="center">
+      <el-table-column label="路由策略" align="center" width="100">
         <template slot-scope="scope"> {{ routeStrategies.find(t => t.value === scope.row.executorRouteStrategy).label }}</template>
       </el-table-column>
-      <el-table-column label="负责人" align="center">
+      <el-table-column label="负责人" align="center" width="100">
         <template slot-scope="scope">{{ scope.row.author }}</template>
       </el-table-column>
-      <el-table-column label="状态" align="center">
+      <el-table-column label="状态" align="center" width="200">
         <template slot-scope="scope">
           <el-switch
             v-model="scope.row.triggerStatus"
@@ -58,7 +58,7 @@
           />
         </template>
       </el-table-column>
-      <el-table-column label="注册节点" align="center">
+      <el-table-column label="注册节点" align="center" width="200">
         <template slot-scope="scope">
           <el-popover
             placement="bottom"
@@ -86,7 +86,10 @@
           </el-popover>
         </template>
       </el-table-column>
-      <el-table-column label="Actions" align="center">
+      <el-table-column label="最近一次执行状态" align="center">
+        <template slot-scope="scope"> {{ statusList.find(t => t.value === scope.row.lastHandleCode).label }}</template>
+      </el-table-column>
+      <el-table-column label="操作" align="center">
         <template slot-scope="{row}">
           <el-dropdown split-button type="primary">
             操作
@@ -162,6 +165,13 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="超时时间(分钟)">
+              <el-input-number v-model="temp.executorTimeout" :min="0" :max="20" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="失败重试次数">
               <el-input-number v-model="temp.executorFailRetryCount" :min="0" :max="20" />
             </el-form-item>
@@ -193,8 +203,8 @@
         </el-row>
         <el-row v-if="temp.glueType==='BEAN'" :gutter="20">
           <el-col :span="12">
-            <el-form-item label="分区时间字段">
-              <el-input v-model="partitionField" placeholder="请输入分区时间字段" style="width: 56%" />
+            <el-form-item label="分区字段">
+              <el-input v-model="partitionField" placeholder="请输入分区字段" style="width: 56%" />
             </el-form-item>
           </el-col>
           <el-col :span="7">
@@ -222,10 +232,10 @@
       <powershell-editor v-if="temp.glueType==='GLUE_POWERSHELL'" ref="powershellEditor" v-model="glueSource" />
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">
-          Cancel
+          取消
         </el-button>
         <el-button type="primary" @click="dialogStatus==='create'?createData():updateData()">
-          Confirm
+          确定
         </el-button>
       </div>
     </el-dialog>
@@ -360,6 +370,12 @@ export default {
         { value: 'yyyy-MM-dd', label: 'yyyy-MM-dd' },
         { value: 'yyyyMMdd', label: 'yyyyMMdd' },
         { value: 'yyyy/MM/dd', label: 'yyyy/MM/dd' }
+      ],
+      statusList: [
+        { value: 500, label: '失败' },
+        { value: 502, label: '失败(超时)' },
+        { value: 200, label: '成功' },
+        { value: 0, label: '无' }
       ]
     }
   },
@@ -489,7 +505,7 @@ export default {
     },
     // 查看日志
     handlerViewLog(row) {
-      this.$router.push({ path: '/datax/jobLog', query: { jobId: row.id }})
+      this.$router.push({ path: '/datax/log/jobLog', query: { jobId: row.id }})
     },
     handlerStart(row) {
       job.startJob(row.id).then(response => {

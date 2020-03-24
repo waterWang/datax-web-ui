@@ -11,24 +11,10 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="表" prop="tableName">
+      <el-form-item label="文档" prop="tableName">
         <el-select v-model="readerForm.tableName" filterable @change="rTbChange">
           <el-option v-for="item in rTbList" :key="item" :label="item" :value="item" />
         </el-select>
-      </el-form-item>
-      <el-form-item label="path" prop="path">
-        <el-input v-model="readerForm.path" :autosize="{ minRows: 2, maxRows: 20}" type="textarea" placeholder="要读取的文件路径，如果要读取多个文件，可以使用正则表达式'*'" style="width: 42%" />
-      </el-form-item>
-      <el-form-item label="defaultFS" prop="defaultFS">
-        <el-input v-model="readerForm.defaultFS" placeholder="Hadoop hdfs文件系统namenode节点地址" style="width: 42%" />
-      </el-form-item>
-      <el-form-item label="fileType" prop="fileType">
-        <el-select v-model="readerForm.fileType" placeholder="文件的类型">
-          <el-option v-for="item in fileTypes" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="fieldDelimiter" prop="fieldDelimiter">
-        <el-input v-model="readerForm.fieldDelimiter" placeholder="读取的字段分隔符" style="width: 42%" />
       </el-form-item>
       <el-form-item label="字段">
         <el-checkbox
@@ -50,7 +36,7 @@ import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
 
 export default {
-  name: 'HiveReader',
+  name: 'MongoDBReader',
   data() {
     return {
       jdbcDsQuery: {
@@ -71,26 +57,13 @@ export default {
         tableName: '',
         columns: [],
         checkAll: false,
-        isIndeterminate: true,
-        path: '',
-        defaultFS: '',
-        fileType: '',
-        fieldDelimiter: ''
+        isIndeterminate: true
       },
       rules: {
-        path: [{ required: true, message: 'this is required', trigger: 'blur' }],
-        defaultFS: [{ required: true, message: 'this is required', trigger: 'blur' }],
-        fileType: [{ required: true, message: 'this is required', trigger: 'change' }],
+        mode: [{ required: true, message: 'this is required', trigger: 'blur' }],
         datasourceId: [{ required: true, message: 'this is required', trigger: 'blur' }],
         tableName: [{ required: true, message: 'this is required', trigger: 'blur' }]
-      },
-      fileTypes: [
-        { value: 'text', label: 'text' },
-        { value: 'orc', label: 'orc' },
-        { value: 'rc', label: 'rc' },
-        { value: 'seq', label: 'seq' },
-        { value: 'csv', label: 'csv' }
-      ]
+      }
     }
   },
   created() {

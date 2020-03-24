@@ -34,33 +34,14 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <!--<el-col :span="6">
-          <el-form-item>
-            <el-button type="primary" :disabled="!this.fromTableName" @click="createTable()">一键生成目标表</el-button>
-          </el-form-item>
-        </el-col>-->
       </el-row>
-      <el-form-item label="path" prop="path">
-        <el-input v-model="writerForm.path" :autosize="{ minRows: 2, maxRows: 20}" type="textarea" placeholder="为与hive表关联，请填写hive表在hdfs上的存储路径" style="width: 42%" />
-      </el-form-item>
-      <el-form-item label="defaultFS" prop="defaultFS">
-        <el-input v-model="writerForm.defaultFS" placeholder="Hadoop hdfs文件系统namenode节点地址" style="width: 42%" />
-      </el-form-item>
-      <el-form-item label="fileName" prop="fileName">
-        <el-input v-model="writerForm.fileName" placeholder="HdfsWriter写入时的文件名" style="width: 42%" />
-      </el-form-item>
-      <el-form-item label="fileType" prop="fileType">
-        <el-select v-model="writerForm.fileType" placeholder="文件的类型">
-          <el-option v-for="item in fileTypes" :key="item.value" :label="item.label" :value="item.value" />
+      <el-form-item label="更新信息">
+        <el-select v-model="writerForm.upsertInfo.isUpsert" placeholder="是否更新">
+          <el-option v-for="item in upsertType" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="writeMode" prop="writeMode">
-        <el-select v-model="writerForm.writeMode" placeholder="文件的类型">
-          <el-option v-for="item in writeModes" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="fieldDelimiter" prop="fieldDelimiter">
-        <el-input v-model="writerForm.fieldDelimiter" placeholder="与创建表的分隔符一致" style="width: 13%" />
+      <el-form-item>
+        <el-input v-model="writerForm.upsertInfo.upsertKey" placeholder="更新的业务主键" style="width: 42%" />
       </el-form-item>
       <el-form-item label="字段">
         <el-checkbox v-model="writerForm.checkAll" :indeterminate="writerForm.isIndeterminate" @change="wHandleCheckAllChange">全选</el-checkbox>
@@ -77,7 +58,7 @@
 import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
 export default {
-  name: 'HiveWriter',
+  name: 'MongoDBWriter',
   data() {
     return {
       wDsList: [],
@@ -87,37 +68,26 @@ export default {
       dataSource: '',
       writerForm: {
         datasourceId: undefined,
-        tableName: '',
         columns: [],
+        tableName: '',
         checkAll: false,
         isIndeterminate: true,
         ifCreateTable: false,
-        defaultFS: '',
-        fileType: '',
-        path: '',
-        fileName: '',
-        writeMode: '',
-        fieldDelimiter: ''
+        upsertInfo: {
+          isUpsert: '',
+          upsertKey: ''
+        }
       },
+      upsertType: [
+        { value: true, label: '针对相同的upsertKey做更新' },
+        { value: false, label: '不做更新' }
+      ],
       rules: {
-        path: [{ required: true, message: 'this is required', trigger: 'blur' }],
-        defaultFS: [{ required: true, message: 'this is required', trigger: 'blur' }],
-        fileName: [{ required: true, message: 'this is required', trigger: 'blur' }],
-        fileType: [{ required: true, message: 'this is required', trigger: 'change' }],
-        writeMode: [{ required: true, message: 'this is required', trigger: 'change' }],
-        fieldDelimiter: [{ required: true, message: 'this is required', trigger: 'blur' }],
+        mode: [{ required: true, message: 'this is required', trigger: 'blur' }],
         datasourceId: [{ required: true, message: 'this is required', trigger: 'blur' }],
         fromTableName: [{ required: true, message: 'this is required', trigger: 'blur' }]
       },
-      readerForm: this.getReaderData(),
-      fileTypes: [
-        { value: 'text', label: 'text' },
-        { value: 'orc', label: 'orc' }
-      ],
-      writeModes: [
-        { value: 'append', label: 'append 写入前不做任何处理' },
-        { value: 'nonConflict', label: 'nonConflict 目录下有fileName前缀的文件，直接报错' }
-      ]
+      readerForm: this.getReaderData()
     }
   },
   created() {

@@ -22,8 +22,9 @@
       </div>
       <div v-show="active===4" class="step4">
         <el-button type="primary" @click="buildJson">构建</el-button>
-        <el-button type="info" @click="handleCopy(inputData,$event)">copy json</el-button>
-        <el-button type="text" @click="handleJobTemplateSelectDrawer">{{ jobTemplate ? jobTemplate : "选择模板(操作步骤：构建->选择模板->下一步)" }}</el-button>
+        <el-button type="info" @click="handleCopy(inputData,$event)">复制 json</el-button>
+        <el-button type="primary" @click="handleJobTemplateSelectDrawer">{{ jobTemplate ? jobTemplate : "选择模板" }}</el-button>
+        (步骤：构建->选择模板->下一步)
         <el-drawer
           ref="jobTemplateSelectDrawer"
           title="选择模板"
@@ -187,7 +188,6 @@ export default {
     buildJson() {
       const readerData = this.$refs.reader.getData()
       const writeData = this.$refs.writer.getData()
-      const tableName = this.$refs.writer.getTableName()
       const readerColumns = this.$refs.mapper.getLColumns()
       const writerColumns = this.$refs.mapper.getRColumns()
       const hiveReader = {
@@ -204,6 +204,21 @@ export default {
         writeMode: writeData.writeMode,
         writeFieldDelimiter: writeData.fieldDelimiter
       }
+      const hbaseReader = {
+        readerMode: readerData.mode,
+        readerMaxVersion: readerData.maxVersion,
+        readerRange: readerData.range
+      }
+      const hbaseWriter = {
+        writerMode: writeData.mode,
+        writerRowkeyColumn: writeData.rowkeyColumn,
+        writerVersionColumn: writeData.versionColumn,
+        writeNullMode: writeData.nullMode
+      }
+      const mongoDBReader = {}
+      const mongoDBWriter = {
+        upsertInfo: writeData.upsertInfo
+      }
       const rdbmsReader = {
         readerSplitPk: readerData.splitPk,
         whereParams: readerData.where,
@@ -217,12 +232,16 @@ export default {
         readerTables: [readerData.tableName],
         readerColumns: readerColumns,
         writerDatasourceId: writeData.datasourceId,
-        writerTables: [tableName],
+        writerTables: [writeData.tableName],
         writerColumns: writerColumns,
         hiveReader: hiveReader,
         hiveWriter: hiveWriter,
         rdbmsReader: rdbmsReader,
-        rdbmsWriter: rdbmsWriter
+        rdbmsWriter: rdbmsWriter,
+        hbaseReader: hbaseReader,
+        hbaseWriter: hbaseWriter,
+        mongoDBReader: mongoDBReader,
+        mongoDBWriter: mongoDBWriter
       }
       // 调api
       dataxJsonApi.buildJobJson(obj).then(response => {
