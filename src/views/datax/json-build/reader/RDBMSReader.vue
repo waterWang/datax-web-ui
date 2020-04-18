@@ -16,11 +16,11 @@
           <el-option v-for="item in rTbList" :key="item" :label="item" :value="item" />
         </el-select>
       </el-form-item>
-      <el-form-item label="querySql">
+      <el-form-item label="SQL语句">
         <el-input v-model="readerForm.querySql" :autosize="{ minRows: 3, maxRows: 20}" type="textarea" placeholder="sql查询，一般用于多表关联查询时才用" style="width: 42%" />
         <el-button @click.prevent="getColumns('reader')">解析字段</el-button>
       </el-form-item>
-      <el-form-item label="splitPk">
+      <el-form-item label="切分">
         <el-input v-model="readerForm.splitPk" placeholder="切分主键" style="width: 13%" />
       </el-form-item>
       <el-form-item label="字段">
@@ -44,6 +44,7 @@
 <script>
 import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
+import Bus from '../busReader'
 
 export default {
   name: 'RDBMSReader',
@@ -51,7 +52,7 @@ export default {
     return {
       jdbcDsQuery: {
         current: 1,
-        size: 50
+        size: 200
       },
       rDsList: [],
       rTbList: [],
@@ -76,6 +77,11 @@ export default {
         datasourceId: [{ required: true, message: 'this is required', trigger: 'change' }],
         tableName: [{ required: true, message: 'this is required', trigger: 'change' }]
       }
+    }
+  },
+  watch: {
+    'readerForm.datasourceId': function(oldVal, newVal) {
+      this.getTables('reader')
     }
   },
   created() {
@@ -113,6 +119,7 @@ export default {
           this.dataSource = item.datasource
         }
       })
+      Bus.dataSourceId = e
       this.$emit('selectDataSource', this.dataSource)
       // 获取可用表
       this.getTables('reader')
@@ -168,6 +175,9 @@ export default {
       this.readerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.rColumnList.length
     },
     getData() {
+      if (Bus.dataSourceId) {
+        this.readerForm.datasourceId = Bus.dataSourceId
+      }
       return this.readerForm
     }
   }

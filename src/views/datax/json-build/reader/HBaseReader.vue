@@ -53,6 +53,7 @@
 <script>
 import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
+import Bus from '../busReader'
 
 export default {
   name: 'HBaseReader',
@@ -60,7 +61,7 @@ export default {
     return {
       jdbcDsQuery: {
         current: 1,
-        size: 50
+        size: 200
       },
       rDsList: [],
       rTbList: [],
@@ -100,6 +101,11 @@ export default {
       }
     }
   },
+  watch: {
+    'readerForm.datasourceId': function(oldVal, newVal) {
+      this.getTables('reader')
+    }
+  },
   created() {
     this.getJdbcDs()
   },
@@ -135,6 +141,7 @@ export default {
           this.dataSource = item.datasource
         }
       })
+      Bus.dataSourceId = e
       this.$emit('selectDataSource', this.dataSource)
       // 获取可用表
       this.getTables('reader')
@@ -186,6 +193,9 @@ export default {
       this.readerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.rColumnList.length
     },
     getData() {
+      if (Bus.dataSourceId) {
+        this.readerForm.datasourceId = Bus.dataSourceId
+      }
       return this.readerForm
     }
   }

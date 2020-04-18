@@ -29,9 +29,9 @@
             :value="item"
           />
         </el-select>
-        <!--<el-input v-model="fromTableName" style="width: 195px" filterable  @change="wTbChange"></el-input>-->
-        <!--<el-checkbox v-model="writerForm.ifCreateTable" @change="createTableCheckedChange">新增</el-checkbox>-->
         <el-input v-show="writerForm.ifCreateTable" v-model="writerForm.tableName" style="width: 200px;" :placeholder="readerForm.tableName" />
+        <el-input v-model="createTableName" style="width: 195px" />
+        <el-button type="primary" @click="createTable">新增</el-button>
       </el-form-item>
       <div style="margin: 5px 0;" />
       <el-form-item label="字段">
@@ -42,7 +42,10 @@
         </el-checkbox-group>
       </el-form-item>
       <el-form-item label="preSql">
-        <el-input v-model="writerForm.preSql" placeholder="preSql" type="textarea" style="width: 42%" />
+        <el-input v-model="writerForm.preSql" placeholder="多个用;分隔" type="textarea" style="width: 42%" />
+      </el-form-item>
+      <el-form-item label="postSql">
+        <el-input v-model="writerForm.postSql" placeholder="多个用;分隔" type="textarea" style="width: 42%" />
       </el-form-item>
     </el-form>
   </div>
@@ -51,15 +54,21 @@
 <script>
 import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
+import Bus from '../busWriter'
 export default {
   name: 'RDBMSWriter',
   data() {
     return {
+      jdbcDsQuery: {
+        current: 1,
+        size: 200
+      },
       wDsList: [],
       fromTableName: '',
       fromColumnList: [],
       wTbList: [],
       dataSource: '',
+      createTableName: '',
       writerForm: {
         datasourceId: undefined,
         tableName: '',
@@ -67,6 +76,7 @@ export default {
         checkAll: false,
         isIndeterminate: true,
         preSql: '',
+        postSql: '',
         ifCreateTable: false
       },
       readerForm: this.getReaderData(),
@@ -74,6 +84,11 @@ export default {
         datasourceId: [{ required: true, message: 'this is required', trigger: 'change' }],
         tableName: [{ required: true, message: 'this is required', trigger: 'change' }]
       }
+    }
+  },
+  watch: {
+    'writerForm.datasourceId': function(oldVal, newVal) {
+      this.getTables('reader')
     }
   },
   created() {
@@ -108,6 +123,7 @@ export default {
           this.dataSource = item.datasource
         }
       })
+      Bus.dataSourceId = e
       this.$emit('selectDataSource', this.dataSource)
       // 获取可用表
       this.getTables()
@@ -141,14 +157,10 @@ export default {
       this.writerForm.checkAll = checkedCount === this.fromColumnList.length
       this.writerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.fromColumnList.length
     },
-    createTableCheckedChange(val) {
-      this.writerForm.tableName = val ? this.readerForm.tableName : ''
-      this.fromColumnList = this.readerForm.columns
-      this.writerForm.columns = this.readerForm.columns
-      this.writerForm.checkAll = true
-      this.writerForm.isIndeterminate = false
-    },
     getData() {
+      if (Bus.dataSourceId) {
+        this.writerForm.datasourceId = Bus.dataSourceId
+      }
       return this.writerForm
     },
     getReaderData() {
@@ -156,6 +168,20 @@ export default {
     },
     getTableName() {
       return this.fromTableName
+    },
+    createTable() {
+      const obj = {
+        datasourceId: this.writerForm.datasourceId,
+        tableName: this.createTableName
+      }
+      dsQueryApi.createTable(obj).then(response => {
+        this.$notify({
+          title: 'Success',
+          message: 'Create Table Successfully',
+          type: 'success',
+          duration: 2000
+        })
+      }).catch(() => console.log('promise catch err'))
     }
   }
 }

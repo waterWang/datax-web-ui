@@ -57,10 +57,15 @@
 <script>
 import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
+import Bus from '../busWriter'
 export default {
   name: 'MongoDBWriter',
   data() {
     return {
+      jdbcDsQuery: {
+        current: 1,
+        size: 200
+      },
       wDsList: [],
       fromTableName: '',
       fromColumnList: [],
@@ -88,6 +93,11 @@ export default {
         fromTableName: [{ required: true, message: 'this is required', trigger: 'blur' }]
       },
       readerForm: this.getReaderData()
+    }
+  },
+  watch: {
+    'writerForm.datasourceId': function(oldVal, newVal) {
+      this.getTables()
     }
   },
   created() {
@@ -122,6 +132,7 @@ export default {
           this.dataSource = item.datasource
         }
       })
+      Bus.dataSourceId = e
       this.$emit('selectDataSource', this.dataSource)
       // 获取可用表
       this.getTables()
@@ -163,6 +174,9 @@ export default {
       this.writerForm.isIndeterminate = false
     },
     getData() {
+      if (Bus.dataSourceId) {
+        this.writerForm.datasourceId = Bus.dataSourceId
+      }
       return this.writerForm
     },
     getReaderData() {
@@ -170,24 +184,6 @@ export default {
     },
     getTableName() {
       return this.fromTableName
-    },
-    createTable() {
-      const tableName = this.fromTableName
-      const datasourceId = this.writerForm.datasourceId
-      const columns = this.fromColumnList
-      const jsonString = {}
-      jsonString['datasourceId'] = datasourceId
-      jsonString['tableName'] = tableName
-      jsonString['columns'] = columns
-      console.info(jsonString)
-      dsQueryApi.createTable(jsonString).then(response => {
-        this.$notify({
-          title: 'Success',
-          message: 'Create Table Successfully',
-          type: 'success',
-          duration: 2000
-        })
-      }).catch(() => console.log('promise catch err'))
     }
   }
 }
