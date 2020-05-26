@@ -5,9 +5,8 @@
         <el-select
           v-model="writerForm.datasourceId"
           filterable
-          style="width: 300px;"
           @change="wDsChange"
-        >
+          style="width: 300px;">
           <el-option
             v-for="item in wDsList"
             :key="item.id"
@@ -16,40 +15,13 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="数据库表名：" prop="tableName">
-        <el-select
-          v-model="fromTableName"
-          allow-create
-          default-first-option
-          filterable
-          :disabled="writerForm.ifCreateTable"
-          style="width: 300px"
-          @change="wTbChange"
-        >
-          <el-option
-            v-for="item in wTbList"
-            :key="item"
-            :label="item"
-            :value="item"
-          />
-        </el-select>
-        <el-input v-show="writerForm.ifCreateTable" v-model="writerForm.tableName" style="width: 200px;" :placeholder="readerForm.tableName" />
-        <!--<el-input v-model="createTableName" style="width: 195px" />
-        <el-button type="primary" @click="createTable">新增</el-button>-->
-      </el-form-item>
       <div style="margin: 5px 0;" />
-      <el-form-item label="字段：">
+      <el-form-item label="数据库表名：">
         <el-checkbox v-model="writerForm.checkAll" :indeterminate="writerForm.isIndeterminate" @change="wHandleCheckAllChange">全选</el-checkbox>
         <div style="margin: 15px 0;" />
-        <el-checkbox-group v-model="writerForm.columns" @change="wHandleCheckedChange">
-          <el-checkbox v-for="c in fromColumnList" :key="c" :label="c">{{ c }}</el-checkbox>
+        <el-checkbox-group v-model="writerForm.tables" @change="wHandleCheckedChange">
+          <el-checkbox v-for="c in wTbList" :key="c" :label="c">{{ c }}</el-checkbox>
         </el-checkbox-group>
-      </el-form-item>
-      <el-form-item label="前置sql语句：">
-        <el-input v-model="writerForm.preSql" placeholder="前置sql在insert之前执行" type="textarea" style="width: 42%" />
-      </el-form-item>
-      <el-form-item label="postSql">
-        <el-input v-model="writerForm.postSql" placeholder="多个用;分隔" type="textarea" style="width: 42%" />
       </el-form-item>
     </el-form>
   </div>
@@ -60,7 +32,7 @@ import * as dsQueryApi from '@/api/ds-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
 import Bus from '../busWriter'
 export default {
-  name: 'RDBMSWriter',
+  name: 'TableWriter',
   data() {
     return {
       jdbcDsQuery: {
@@ -70,19 +42,14 @@ export default {
       },
       wDsList: [],
       fromTableName: '',
-      fromColumnList: [],
       wTbList: [],
       dataSource: '',
       createTableName: '',
       writerForm: {
         datasourceId: undefined,
-        tableName: '',
-        columns: [],
+        tables: [],
         checkAll: false,
-        isIndeterminate: true,
-        preSql: '',
-        postSql: '',
-        ifCreateTable: false
+        isIndeterminate: true
       },
       readerForm: this.getReaderData(),
       rules: {
@@ -93,7 +60,7 @@ export default {
   },
   watch: {
     'writerForm.datasourceId': function(oldVal, newVal) {
-      this.getTables('rdbmsWriter')
+      this.getTables('reader')
     }
   },
   created() {
@@ -101,7 +68,7 @@ export default {
   },
   methods: {
     // 获取可用数据源
-    getJdbcDs(type) {
+    getJdbcDs() {
       this.loading = true
       jdbcDsList(this.jdbcDsQuery).then(response => {
         const { records } = response
@@ -110,16 +77,17 @@ export default {
       })
     },
     // 获取表名
-    getTables(type) {
-      if (type === 'rdbmsWriter') {
-        const obj = {
-          datasourceId: this.writerForm.datasourceId
-        }
-        // 组装
-        dsQueryApi.getTables(obj).then(response => {
-          this.wTbList = response
-        })
+    getTables() {
+      const obj = {
+        datasourceId: this.writerForm.datasourceId
       }
+      // 组装
+      dsQueryApi.getTables(obj).then(response => {
+        this.wTbList = response
+        this.writerForm.tables = this.wTbList
+        this.writerForm.checkAll = true
+        this.writerForm.isIndeterminate = false
+      })
     },
     wDsChange(e) {
       // 清空
@@ -135,34 +103,14 @@ export default {
       // 获取可用表
       this.getTables()
     },
-    // 获取表字段
-    getColumns() {
-      const obj = {
-        datasourceId: this.writerForm.datasourceId,
-        tableName: this.writerForm.tableName
-      }
-      dsQueryApi.getColumns(obj).then(response => {
-        this.fromColumnList = response
-        this.writerForm.columns = response
-        this.writerForm.checkAll = true
-        this.writerForm.isIndeterminate = false
-      })
-    },
-    // 表切换
-    wTbChange(t) {
-      this.writerForm.tableName = t
-      this.fromColumnList = []
-      this.writerForm.columns = []
-      this.getColumns('writer')
-    },
     wHandleCheckAllChange(val) {
-      this.writerForm.columns = val ? this.fromColumnList : []
+      this.writerForm.tables = val ? this.wTbList : []
       this.writerForm.isIndeterminate = false
     },
     wHandleCheckedChange(value) {
       const checkedCount = value.length
-      this.writerForm.checkAll = checkedCount === this.fromColumnList.length
-      this.writerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.fromColumnList.length
+      this.writerForm.checkAll = checkedCount === this.wTbList.length
+      this.writerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.wTbList.length
     },
     getData() {
       if (Bus.dataSourceId) {

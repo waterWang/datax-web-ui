@@ -27,6 +27,9 @@
       <el-table-column label="任务描述" align="center">
         <template slot-scope="scope">{{ scope.row.jobDesc }}</template>
       </el-table-column>
+      <el-table-column label="所属项目" align="center">
+        <template slot-scope="scope">{{ scope.row.jobProject }}</template>
+      </el-table-column>
       <el-table-column label="Cron" align="center">
         <template slot-scope="scope">
           <span>{{ scope.row.jobCron }}</span>
@@ -36,7 +39,7 @@
         <template slot-scope="scope"> {{ routeStrategies.find(t => t.value === scope.row.executorRouteStrategy).label }}</template>
       </el-table-column>
       <el-table-column label="负责人" align="center">
-        <template slot-scope="scope">{{ scope.row.authorName }}</template>
+        <template slot-scope="scope">{{ scope.row.author }}</template>
       </el-table-column>
       <el-table-column label="注册节点" align="center">
         <template slot-scope="scope">
@@ -119,9 +122,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="负责人" prop="author">
-              <el-select v-model="temp.author" multiple placeholder="请输入负责人" value-key="id">
-                <el-option v-for="item in authorList" :key="item.id" :label="item.nickname" :value="item" />
-              </el-select>
+              <el-input v-model="temp.author" placeholder="请输入负责人" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -133,13 +134,16 @@
               </el-select>
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="报警邮件">
+              <el-input v-model="temp.alarmEmail" placeholder="请输入报警邮件，多个用逗号分隔" />
+            </el-form-item>
+          </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="父任务ID">
-              <el-select v-model="temp.parentJobId" multiple placeholder="父任务ID" value-key="id">
-                <el-option v-for="item in JobIdList" :key="item.id" :label="item.jobDesc" :value="item" />
-              </el-select>
+            <el-form-item label="超时时间(分钟)">
+              <el-input-number v-model="temp.executorTimeout" :min="0" :max="20" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -152,31 +156,27 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="超时时间(分钟)">
-              <el-input-number v-model="temp.executorTimeout" :min="0" :max="20" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
             <el-form-item label="失败重试次数">
               <el-input-number v-model="temp.executorFailRetryCount" :min="0" :max="20" />
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col>
-            <el-form-item label="增量时间字段">
-              <el-input v-model="temp.replaceParam" placeholder="-DlastTime='%s' -DcurrentTime='%s'" />
+          <el-col :span="12">
+            <el-form-item label="所属项目" prop="jobProject">
+              <el-input v-model="temp.jobProject" size="medium" placeholder="请输入所属项目" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row v-show="this.temp.replaceParam" :gutter="20">
+        <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="增量时间格式" prop="replaceParamType">
-              <el-select v-model="temp.replaceParamType" placeholder="增量时间格式">
-                <el-option v-for="item in replaceFormatTypes" :key="item.value" :label="item.label" :value="item.value" />
+            <el-form-item label="辅助参数" prop="incrementType">
+              <el-select v-model="temp.incrementType" placeholder="请选择参数类型" value="">
+                <el-option v-for="item in incrementTypes" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-row v-if="temp.incrementType === 2" :gutter="20">
           <el-col :span="12">
             <el-form-item label="增量开始时间" prop="incStartTime">
               <el-date-picker
@@ -185,32 +185,74 @@
                 placeholder="首次增量使用"
                 format="yyyy-MM-dd HH:mm:ss"
                 default-time="00:00:00"
-                style="width: 60%"
+                style="width: 57%"
               />
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="分区字段">
+            <el-form-item label="增量时间字段" prop="replaceParam">
+              <el-input v-model="temp.replaceParam" placeholder="-DlastTime='%s' -DcurrentTime='%s'" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="增量时间格式" prop="replaceParamType">
+              <el-select v-model="temp.replaceParamType" placeholder="增量时间格式">
+                <el-option
+                  v-for="item in replaceFormatTypes"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row v-if="temp.incrementType === 1" :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="增量主键开始ID" prop="incStartId">
+              <el-input v-model="temp.incStartId" placeholder="增量首次使用" style="width: 57%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="ID增量参数" prop="replaceParam">
+              <el-input v-model="temp.replaceParam" placeholder="-DstartId='%s' -DendId='%s'" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="主键字段名" prop="primaryKey">
+              <el-input v-model="temp.primaryKey" placeholder="请填写主键字段名" style="width: 57%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row v-if="temp.incrementType === 3" :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="分区字段" prop="partitionField">
               <el-input v-model="partitionField" placeholder="请输入分区字段" style="width: 56%" />
             </el-form-item>
           </el-col>
           <el-col :span="7">
-            <el-form-item v-show="partitionField" label="分区时间">
+            <el-form-item label="分区时间">
               <el-select v-model="timeFormatType" placeholder="分区时间格式">
-                <el-option v-for="item in timeFormatTypes" :key="item.value" :label="item.label" :value="item.value" />
+                <el-option
+                  v-for="item in timeFormatTypes"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col v-show="partitionField" :span="5">
+          <el-col :span="5">
             <el-input-number v-model="timeOffset" :min="-20" :max="0" style="width: 65%" />
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="24">
             <el-form-item label="JVM启动参数">
-              <el-input v-model="temp.jvmParam" placeholder="-Xms1024m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError" />
+              <el-input
+                v-model="temp.jvmParam"
+                placeholder="-Xms1024m -Xmx1024m -XX:+HeapDumpOnOutOfMemoryError"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -248,9 +290,15 @@ export default {
     }
   },
   data() {
-    const validateIncStartTime = (rule, value, callback) => {
-      if (this.temp.replaceParam && !this.temp.incStartTime) {
-        callback(new Error('incStartTime is required'))
+    const validateIncParam = (rule, value, callback) => {
+      if (!value) {
+        callback(new Error('Increment parameters is required'))
+      }
+      callback()
+    }
+    const validatePartitionParam = (rule, value, callback) => {
+      if (!this.partitionField) {
+        callback(new Error('Partition parameters is required'))
       }
       callback()
     }
@@ -280,24 +328,28 @@ export default {
         executorRouteStrategy: [{ required: true, message: 'executorRouteStrategy is required', trigger: 'change' }],
         executorBlockStrategy: [{ required: true, message: 'executorBlockStrategy is required', trigger: 'change' }],
         jobDesc: [{ required: true, message: 'jobDesc is required', trigger: 'blur' }],
+        jobProject: [{ required: true, message: 'jobProject is required', trigger: 'blur' }],
         jobCron: [{ required: true, message: 'jobCron is required', trigger: 'blur' }],
         author: [{ required: true, message: 'author is required', trigger: 'blur' }],
-        incStartTime: [{ trigger: 'blur', validator: validateIncStartTime }]
+        incStartId: [{ trigger: 'blur', validator: validateIncParam }],
+        replaceParam: [{ trigger: 'blur', validator: validateIncParam }],
+        primaryKey: [{ trigger: 'blur', validator: validateIncParam }],
+        incStartTime: [{ trigger: 'change', validator: validateIncParam }],
+        replaceParamType: [{ trigger: 'change', validator: validateIncParam }],
+        partitionField: [{ trigger: 'blur', validator: validatePartitionParam }]
       },
       temp: {
         id: undefined,
         jobGroup: '',
         jobCron: '',
         jobDesc: '',
-        executorRouteStrategy: '',
-        executorBlockStrategy: '',
+        executorRouteStrategy: 'RANDOM',
+        executorBlockStrategy: 'DISCARD_LATER',
         childJobId: '',
-        parentJobId: '',
         executorFailRetryCount: '',
         alarmEmail: '',
         executorTimeout: '',
         author: '',
-        authorName: '',
         jobConfigId: '',
         executorHandler: 'executorJobHandler',
         glueType: 'BEAN',
@@ -305,7 +357,10 @@ export default {
         replaceParam: '',
         jvmParam: '',
         incStartTime: '',
-        partitionInfo: ''
+        partitionInfo: '',
+        incrementType: 0,
+        incStartId: '',
+        primaryKey: ''
       },
       resetTemp() {
         this.temp = this.$options.data().temp
@@ -314,7 +369,6 @@ export default {
         this.partitionField = ''
       },
       executorList: '',
-      authorList: '',
       JobIdList: '',
       blockStrategies: [
         { value: 'SERIAL_EXECUTION', label: '单机串行' },
@@ -334,13 +388,19 @@ export default {
         // { value: 'SHARDING_BROADCAST', label: '分片广播' }
       ],
       replaceFormatTypes: [
-        { value: 'yyyy/MM/dd', label: '日期' },
-        { value: 'HH:mm:ss', label: '时间' },
-        { value: 'yyyy/MM/dd HH:mm:ss', label: '日期+时间' },
-        { value: 'UnitTime', label: '时间戳' }
+        { value: 'yyyy/MM/dd', label: 'yyyy/MM/dd' },
+        { value: 'HH:mm:ss', label: 'HH:mm:ss' },
+        { value: 'yyyy/MM/dd HH:mm:ss', label: 'yyyy/MM/dd HH:mm:ss' },
+        { value: 'Timestamp', label: '时间戳' }
       ],
       glueTypes: [
         { value: 'BEAN', label: 'DataX任务' }
+      ],
+      incrementTypes: [
+        { value: 0, label: '无' },
+        { value: 1, label: '主键自增' },
+        { value: 2, label: '时间自增' },
+        { value: 3, label: 'HIVE分区' }
       ],
       triggerNextTimes: '',
       registerNode: [],
@@ -357,7 +417,6 @@ export default {
   created() {
     this.fetchData()
     this.getExecutor()
-    this.getUsers()
     this.getJobIdList()
   },
 
@@ -366,12 +425,6 @@ export default {
       job.getExecutorList().then(response => {
         const { content } = response
         this.executorList = content
-      })
-    },
-    getUsers() {
-      job.getUsersList().then(response => {
-        const { content } = response
-        this.authorList = content
       })
     },
     getJobIdList() {
@@ -393,6 +446,7 @@ export default {
       this.resetTemp()
       this.dialogStatus = 'create'
       this.dialogFormVisible = true
+      this.temp.jobGroup = this.executorList[0]['id']
       this.$nextTick(() => {
         this.$refs['dataForm'].clearValidate()
       })
@@ -400,28 +454,12 @@ export default {
     createData() {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
-          if (this.temp.author) {
-            const auth = []
-            for (const i in this.temp.author) {
-              auth.push(this.temp.author[i].id)
-            }
-            this.temp.author = auth.toString()
-          }
-
           if (this.temp.childJobId) {
-            const auth = []
+            const childJobs = []
             for (const i in this.temp.childJobId) {
-              auth.push(this.temp.childJobId[i].id)
+              childJobs.push(this.temp.childJobId[i].id)
             }
-            this.temp.childJobId = auth.toString()
-          }
-
-          if (this.temp.parentJobId) {
-            const auth = []
-            for (const i in this.temp.parentJobId) {
-              auth.push(this.temp.parentJobId[i].id)
-            }
-            this.temp.parentJobId = auth.toString()
+            this.temp.childJobId = childJobs.toString()
           }
           if (this.partitionField) this.temp.partitionInfo = this.partitionField + ',' + this.timeOffset + ',' + this.timeFormatType
           job.createJob(this.temp).then(() => {
@@ -442,9 +480,7 @@ export default {
       this.temp = Object.assign({}, row) // copy obj
       this.dialogStatus = 'update'
       this.dialogFormVisible = true
-      const arrIntSet = []
       const arrchildSet = []
-      const arrparentSet = []
       const arrJobIdList = []
       if (this.JobIdList) {
         for (const n in this.JobIdList) {
@@ -455,46 +491,16 @@ export default {
         this.JobIdList = arrJobIdList
       }
 
-      if (this.temp.author) {
-        // eslint-disable-next-line no-unused-vars
-        const arrString = this.temp.author.split(',')
-        for (const i in arrString) {
-          for (const n in this.authorList) {
-            // eslint-disable-next-line eqeqeq
-            if (this.authorList[n].id == arrString[i]) {
-              arrIntSet.push(this.authorList[n])
-            }
-          }
-        }
-        this.temp.author = arrIntSet
-      }
-
       if (this.temp.childJobId) {
-        // eslint-disable-next-line no-unused-vars
         const arrString = this.temp.childJobId.split(',')
         for (const i in arrString) {
           for (const n in this.JobIdList) {
-            // eslint-disable-next-line eqeqeq
-            if (this.JobIdList[n].id == arrString[i]) {
+            if (this.JobIdList[n].id === arrString[i]) {
               arrchildSet.push(this.JobIdList[n])
             }
           }
         }
         this.temp.childJobId = arrchildSet
-      }
-
-      if (this.temp.parentJobId) {
-        // eslint-disable-next-line no-unused-vars
-        const arrString = this.temp.parentJobId.split(',')
-        for (const i in arrString) {
-          for (const n in this.JobIdList) {
-            // eslint-disable-next-line eqeqeq
-            if (this.JobIdList[n].id == arrString[i]) {
-              arrparentSet.push(this.JobIdList[n])
-            }
-          }
-        }
-        this.temp.parentJobId = arrparentSet
       }
 
       if (this.temp.partitionInfo) {
@@ -510,30 +516,13 @@ export default {
     updateData() {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
-          if (this.temp.author) {
-            const auth = []
-            for (const i in this.temp.author) {
-              auth.push(this.temp.author[i].id)
-            }
-            this.temp.author = auth.toString()
-          }
-
           if (this.temp.childJobId) {
-            const auth = []
+            const childJobs = []
             for (const i in this.temp.childJobId) {
-              auth.push(this.temp.childJobId[i].id)
+              childJobs.push(this.temp.childJobId[i].id)
             }
-            this.temp.childJobId = auth.toString()
+            this.temp.childJobId = childJobs.toString()
           }
-
-          if (this.temp.parentJobId) {
-            const auth = []
-            for (const i in this.temp.parentJobId) {
-              auth.push(this.temp.parentJobId[i].id)
-            }
-            this.temp.parentJobId = auth.toString()
-          }
-
           if (this.partitionField) this.temp.partitionInfo = this.partitionField + ',' + this.timeOffset + ',' + this.timeFormatType
           job.updateJob(this.temp).then(() => {
             this.fetchData()
